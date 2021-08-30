@@ -2,16 +2,16 @@ import logging
 import time
 
 import psutil
-from apscheduler.triggers.interval import IntervalTrigger
 
-from util import cmd_util
-from util.schedule_util import scheduler
+from util import cmd_util, v2_util
+from util.schedule_util import schedule_job
 
 __status = {}
 __last_access = time.time()
 __last_get = time.time()
 __access_interval = 0
 __get_interval = 0
+__last_ct = psutil.cpu_times()
 
 
 def get_status():
@@ -20,7 +20,6 @@ def get_status():
     return __status
 
 
-@scheduler.scheduled_job(trigger=IntervalTrigger(seconds=2))
 def refresh_status():
     global __access_interval
     try:
@@ -43,23 +42,33 @@ def refresh_status():
 
 
 def v2_status():
-    result, code = cmd_util.exec_cmd('systemctl is-active v2ray')
-    if result.startswith('active'):
-        code = 0
-    elif result.startswith('inactive'):
-        code = 1
-    else:
-        code = 2
+    # result, code = cmd_util.exec_cmd('systemctl is-active v2ray')
+    # results = result.split('\n')
+    # has_result = False
+    # for result in results:
+    #     if result.startswith('active'):
+    #         code = 0
+    #         has_result = True
+    #         break
+    #     elif result.startswith('inactive'):
+    #         code = 1
+    #         has_result = True
+    #         break
+    #
+    # if not has_result:
+    #     code = 2
+    code = v2_util.__get_stat_code()
+    version = v2_util.get_v2ray_version()
+    msg = v2_util.get_v2ray_error_msg()
     __status['v2'] = {
-        'code': code
+        'code': code,
+        'version': version,
+        'error_msg': msg,
     }
 
 
 def uptime():
     __status['uptime'] = time.time() - psutil.boot_time()
-
-
-__last_ct = psutil.cpu_times()
 
 
 def cpu():
@@ -72,7 +81,10 @@ def cpu():
     total = cur_total - last_total
     idle = cur_ct.idle - __last_ct.idle
 
-    percent = (total - idle) / total * 100
+    if total <= 0:
+        percent = 0
+    else:
+        percent = (total - idle) / total * 100
     __last_ct = cur_ct
     __status['cpu'] = {
         'percent': percent
@@ -143,8 +155,4 @@ def net():
     __last_net_io = cur_net_io
 
 
-if __name__ == '__main__':
-    time.sleep(1)
-    while True:
-        time.sleep(1)
-        print(get_status())
+schedule_job(refresh_status, 2)

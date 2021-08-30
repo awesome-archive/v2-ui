@@ -1,9 +1,11 @@
 # -*- coding:utf-8 -*-
-
+import asyncio
 import logging
 import os
+import platform
 import sys
 
+import tornado
 import tornado.log
 import tornado.options
 from tornado import web, wsgi
@@ -12,6 +14,11 @@ from tornado.ioloop import IOLoop
 
 from init import app, BASE_DIR
 from util import config
+
+
+def init_windows():
+    if platform.system() == 'Windows':
+        asyncio.set_event_loop(asyncio.SelectorEventLoop())
 
 
 def logging_init():
@@ -64,11 +71,21 @@ if __name__ == '__main__':
             User.query.update({'username': 'admin', 'password': 'admin'})
             db.session.commit()
             print('The username and password have been reset to admin, please restart the panel now')
+        elif sys.argv[1] == 'setport':
+            if len(sys.argv) > 2:
+                port = sys.argv[2]
+            else:
+                port = 65432
+            config.update_setting_by_key('port', port)
+            print('Set port to ' + port + ' successfully')
         else:
             print('Invalid command')
             print('resetconfig: Reset all panel settings to default values')
             print('resetuser: Reset username and password to \'admin\'')
+            print('setport [number]: Set web port to [number], default is 65432')
+        os._exit(0)
     else:
+        init_windows()
         logging_init()
         try:
             main()

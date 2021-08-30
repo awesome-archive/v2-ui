@@ -6,46 +6,52 @@ window.isArrEmpty = arr => {
     return !isEmpty(arr) && arr.length === 0;
 };
 
-window.clone = function(obj) {
-    let newObj = obj instanceof Array ? [] : {};
-    for (let prop in obj) {
-        newObj[prop] = obj[prop];
+window.copyArr = (dest, src) => {
+    dest.splice(0);
+    for (const item of src) {
+        dest.push(item);
+    }
+};
+
+window.clone = obj => {
+    let newObj;
+    if (obj instanceof Array) {
+        newObj = [];
+        copyArr(newObj, obj);
+    } else if (obj instanceof Object) {
+        newObj = {};
+        for (const key of Object.keys(obj)) {
+            newObj[key] = obj[key];
+        }
+    } else {
+        newObj = obj;
     }
     return newObj;
 };
 
 window.deepClone = function(obj) {
-    let newObj = obj instanceof Array ? [] : {};
-    for (let prop in obj) {
-        let value = obj[prop];
-        newObj[prop] = typeof value === 'object' ? deepClone(value) : value;
+    let newObj;
+    if (obj instanceof Array) {
+        newObj = [];
+        for (const item of obj) {
+            newObj.push(deepClone(item));
+        }
+    } else if (obj instanceof Object) {
+        newObj = {};
+        for (const key of Object.keys(obj)) {
+            newObj[key] = deepClone(obj[key]);
+        }
+    } else {
+        newObj = obj;
     }
     return newObj;
 };
 
-window.execute = (func, ... args) => {
-    if (func !== undefined && typeof func === 'function') {
-        switch(args.length) {
-            case 0: func(); break;
-            case 1: func(args[0]); break;
-            case 2: func(args[0], args[1]); break;
-            case 3: func(args[0], args[1], args[2]); break;
-            case 4: func(args[0], args[1], args[2], args[3]); break;
-            default: func(args); break;
-        }
+window.execute = (func, ...args) => {
+    if (!isEmpty(func) && typeof func === 'function') {
+        func(...args);
     }
 };
-
-(function () {
-    let clipboard = new ClipboardJS('.clipboard');
-    clipboard.on('success', function () {
-        Vue.prototype.$message.success('复制成功');
-    });
-    clipboard.on('error', function (e) {
-        console.log(e);
-        Vue.prototype.$message.error('复制失败，请手动复制或使用最新版的 chrome 浏览器');
-    });
-})();
 
 let ONE_KB = 1024;
 let ONE_MB = ONE_KB * 1024;
@@ -148,18 +154,6 @@ window.safeBase64 = str => {
         .replace(/\//g, '_');
 };
 
-window.formatSecond = second =>{
-    if (second < 60) {
-        return second.toFixed(0) + ' 秒';
-    } else if (second < 3600) {
-        return (second / 60).toFixed(0) + ' 分钟'
-    } else if (second < 3600 * 24) {
-        return (second / 3600).toFixed(0) + ' 小时'
-    } else {
-        return (second / 3600 / 24).toFixed(0) + ' 天'
-    }
-};
-
 window.docCookies = {
     getItem: function (sKey) {
         return decodeURIComponent(document.cookie.replace(new RegExp("(?:(?:^|.*;)\\s*" + encodeURIComponent(sKey).replace(/[-.+*]/g, "\\$&") + "\\s*\\=\\s*([^;]*).*$)|^.*$"), "$1")) || null;
@@ -202,4 +196,23 @@ window.docCookies = {
         }
         return aKeys;
     }
+};
+
+window.deepSearch = (obj, key) => {
+    if (obj instanceof Array) {
+        for (let i = 0; i < obj.length; ++i) {
+            if (deepSearch(obj[i], key)) {
+                return true;
+            }
+        }
+    } else if (obj instanceof Object) {
+        for (let name in obj) {
+            if (deepSearch(obj[name], key)) {
+                return true;
+            }
+        }
+    } else {
+        return obj.toString().indexOf(key) >= 0;
+    }
+    return false;
 };
